@@ -21,6 +21,8 @@ import {
   selectCartSubtotal,
   useCartStore,
 } from "@/lib/cart-store";
+import { ensureOrderWorkerReady } from "@/lib/msw-client";
+import { buildOrderRequest, placeOrder } from "@/lib/order";
 import { getRestaurantById } from "@/lib/mock-data";
 import type { CheckoutInput } from "@/lib/schemas";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -37,6 +39,8 @@ export function CheckoutView({ initialRestaurantId }: CheckoutViewProps) {
   const isHydrated = useHydrated();
   const initialCheckDone = useRef(false);
 
+  const clearCart = useCartStore((state) => state.clearCart);
+
   const effectiveRestaurantId =
     initialRestaurantId ?? (searchParams.get("restaurantId") || undefined);
 
@@ -51,8 +55,23 @@ export function CheckoutView({ initialRestaurantId }: CheckoutViewProps) {
     selectCartSubtotal(effectiveRestaurantId ?? ""),
   );
 
-  // Seam for #14: component state to switch between form and confirmation view
+  // State to switch between form and confirmation view
   const [view, setView] = useState<CheckoutViewMode>("form");
+  const [orderCode, setOrderCode] = useState<string | null>(null);
+  const [isWorkerReady, setIsWorkerReady] = useState(false);
+
+  // Lazily start the MSW browser service worker on checkout view mount
+  useEffect(() => {
+    let active = true;
+    ensureOrderWorkerReady().then(() => {
+      if (active) {
+        setIsWorkerReady(true);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Initial hydrated check: missing, unknown, or empty cart -> redirect to / with toast
   // Ref guard guarantees this check runs exactly once on initial hydrated load.
@@ -73,12 +92,30 @@ export function CheckoutView({ initialRestaurantId }: CheckoutViewProps) {
     }
   }, [isHydrated, effectiveRestaurantId, router]);
 
-  // Seam for #14: named onSubmit handler for order submission.
-  // In ticket #13, valid submission is a no-op that leaves the view on 'form'.
-  // TODO(#14): Wire order placement to POST /api/orders MSW endpoint, show spinner during submission,
-  // clear submitted Restaurant Cart via clearCart(restaurant.id), and transition to confirmation view via setView('confirmation').
-  const onSubmit = async (_values: CheckoutInput): Promise<void> => {
-    // Intentionally no-op in #13. #14 will perform the fetch and call setView('confirmation').
+  // Named onSubmit handler for order submission:
+  // Submits to POST /api/orders MSW endpoint, shows spinner during submission (isSubmitting),
+  // clears submitted Restaurant Cart via clearCart(restaurant.id), and switches in place to confirmation.
+  const onSubmit = async (values: CheckoutInput): Promise<void> => {
+    if (!restaurant) return;
+
+    // Await worker readiness if still starting
+    await ensureOrderWorkerReady();
+
+    const orderRequest = buildOrderRequest(
+      restaurant.id,
+      cartLines,
+      values,
+    );
+
+    const result = await placeOrder(orderRequest);
+
+    if (result.success) {
+      setOrderCode(result.orderCode);
+      setView("confirmation");
+      clearCart(restaurant.id);
+    } else {
+      toast.error(result.errorMessage);
+    }
   };
 
   // While hydrating or if redirecting before navigation completes, render an accessible loading placeholder.
@@ -103,11 +140,10 @@ export function CheckoutView({ initialRestaurantId }: CheckoutViewProps) {
     );
   }
 
-  // Confirmation view seam for #14
-  if (view === "confirmation") {
+  // Confirmation view showing simulated Order Code (FD-XXXXXX)
+  if (view === "confirmation" && orderCode) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-12 text-center sm:px-6">
-        {/* TODO(#14): Confirmation view showing simulated Order Code (e.g. FD-XXXXXX) */}
         <Card data-testid="order-confirmation" className="p-8">
           <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
             <CheckCircle2 className="size-8" aria-hidden="true" />
@@ -118,8 +154,19 @@ export function CheckoutView({ initialRestaurantId }: CheckoutViewProps) {
           <p className="mt-2 text-sm text-muted-foreground">
             Cảm ơn bạn đã đặt món tại <strong>{restaurant.name}</strong>.
           </p>
+          <div className="my-6 rounded-lg border border-border bg-muted/40 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Mã đơn hàng
+            </p>
+            <p
+              data-testid="order-code"
+              className="mt-1 font-mono text-2xl font-extrabold tracking-widest text-primary"
+            >
+              {orderCode}
+            </p>
+          </div>
           <div className="mt-6 flex justify-center">
-            <Button asChild>
+            <Button asChild size="lg">
               <Link href="/">Quay về trang chủ</Link>
             </Button>
           </div>
@@ -165,7 +212,7 @@ export function CheckoutView({ initialRestaurantId }: CheckoutViewProps) {
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
-              <CheckoutForm onSubmit={onSubmit} />
+              <CheckoutForm onSubmit={onSubmit} isReady={isWorkerReady} />
             </CardContent>
           </Card>
         </div>
