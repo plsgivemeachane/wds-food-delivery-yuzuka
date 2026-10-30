@@ -28,3 +28,17 @@ pnpm test
 pnpm build
 pnpm test:e2e
 ```
+
+## Chạy bằng Docker Compose
+
+Sao chép file biến môi trường mẫu và khởi chạy cả `web` (Next.js production server) cùng `postgres`:
+
+```bash
+cp .env.example .env && docker compose up -d
+```
+
+Ứng dụng sẽ chạy tại `http://localhost:3000`. Để dừng các container:
+
+```bash
+docker compose down
+```
