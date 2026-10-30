@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import "./globals.css";
-import { CartBadge } from "@/components/cart-badge";
+import { CartDrawerWrapper } from "@/components/cart-drawer";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 
@@ -22,7 +22,7 @@ export default function RootLayout({
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
-        <CartBadge />
+        <CartDrawerWrapper />
         <Toaster richColors position="top-center" duration={2000} />
       </body>
     </html>
