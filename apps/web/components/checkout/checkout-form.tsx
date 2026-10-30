@@ -13,9 +13,10 @@ import { cn } from "@/lib/utils";
 
 export interface CheckoutFormProps {
   onSubmit: (values: CheckoutInput) => Promise<void> | void;
+  isReady?: boolean;
 }
 
-export function CheckoutForm({ onSubmit }: CheckoutFormProps) {
+export function CheckoutForm({ onSubmit, isReady = true }: CheckoutFormProps) {
   const {
     register,
     handleSubmit,
@@ -175,7 +176,7 @@ export function CheckoutForm({ onSubmit }: CheckoutFormProps) {
       <Button
         type="submit"
         size="lg"
-        disabled={isSubmitting}
+        disabled={isSubmitting || !isReady}
         className="w-full font-semibold"
         data-testid="checkout-submit-button"
       >
@@ -183,6 +184,11 @@ export function CheckoutForm({ onSubmit }: CheckoutFormProps) {
           <>
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             <span>Đang xử lý đặt hàng...</span>
+          </>
+        ) : !isReady ? (
+          <>
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            <span>Đang chuẩn bị...</span>
           </>
         ) : (
           <>

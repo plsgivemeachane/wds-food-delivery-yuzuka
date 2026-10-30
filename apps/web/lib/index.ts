@@ -24,4 +24,12 @@ export type {
   OrderSuccess,
   Restaurant,
 } from "./types";
+export {
+  ORDER_REJECTION_MESSAGES,
+  DEFAULT_ORDER_ERROR_MESSAGE,
+  getOrderErrorMessage,
+  buildOrderRequest,
+  placeOrder,
+  type PlaceOrderResult,
+} from "./order";
 export { cn } from "./utils";
