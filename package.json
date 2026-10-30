@@ -1,0 +1,16 @@
+{
+  "name": "wds-food-delivery",
+  "private": true,
+  "packageManager": "pnpm@10.10.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "start": "pnpm -C apps/web start",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "pnpm -C apps/web test:e2e"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0"
+  }
+}
