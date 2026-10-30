@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AddToCartButton } from "@/components/add-to-cart-button";
 import { DishCard } from "@/components/dish-card";
 import {
   getDishesByRestaurant,
@@ -132,7 +133,11 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {dishes.map((dish) => (
-            <DishCard key={dish.id} dish={dish} />
+            <DishCard
+              key={dish.id}
+              dish={dish}
+              action={<AddToCartButton dish={dish} />}
+            />
           ))}
         </div>
       </section>
