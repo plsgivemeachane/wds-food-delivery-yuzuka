@@ -1,46 +1,7 @@
-import { Clock, MapPin, Star, Utensils } from "lucide-react";
+import { Utensils } from "lucide-react";
+import { RestaurantCard } from "@/components/restaurant-card";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-
-const featuredRestaurants = [
-  {
-    id: "pho-gia-truyen-bat-dan",
-    name: "Phở Gia Truyền Bát Đàn",
-    cuisine: "Phở & Bún nước",
-    rating: "4.9",
-    deliveryTime: "20–30 phút",
-    address: "49 Bát Đàn, Quận Hoàn Kiếm",
-    description:
-      "Nước dùng ninh xương bò suốt 12 giờ, bánh phở mềm dai kèm thịt bò tái chín thơm lừng.",
-  },
-  {
-    id: "com-tam-sai-gon-xua",
-    name: "Cơm Tấm Sài Gòn Xưa",
-    cuisine: "Cơm tấm nướng than",
-    rating: "4.8",
-    deliveryTime: "25–35 phút",
-    address: "112 Nguyễn Tri Phương, Quận 5",
-    description:
-      "Sườn cốt lết nướng mật ong vàng ươm, bì thính nhà làm, chả trứng hấp nóng hổi.",
-  },
-  {
-    id: "banh-mi-hoi-an-pho-co",
-    name: "Bánh Mì Hội An Phố Cổ",
-    cuisine: "Bánh mì & Ăn vặt",
-    rating: "4.7",
-    deliveryTime: "15–25 phút",
-    address: "28 Trần Phú, Quận 1",
-    description:
-      "Vỏ bánh giòn rụm, nhân pate gan béo ngậy, thịt xá xíu đậm đà cùng rau thơm tươi mát.",
-  },
-];
+import { RESTAURANTS } from "@/lib/mock-data";
 
 export default function HomePage() {
   return (
@@ -82,37 +43,12 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {featuredRestaurants.map((restaurant) => (
-            <Card key={restaurant.id} className="flex flex-col justify-between">
-              <CardHeader>
-                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <span className="rounded-md bg-secondary px-2 py-0.5 font-medium text-secondary-foreground">
-                    {restaurant.cuisine}
-                  </span>
-                  <span className="inline-flex items-center gap-1 font-semibold text-amber-600">
-                    <Star className="size-3.5 fill-current" aria-hidden="true" />
-                    {restaurant.rating}
-                  </span>
-                </div>
-                <CardTitle className="pt-2 text-lg">{restaurant.name}</CardTitle>
-                <CardDescription>{restaurant.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
-                  <span>{restaurant.address}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-                  <span>Thời gian giao dự kiến: {restaurant.deliveryTime}</span>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button variant="secondary" className="w-full">
-                  Xem thực đơn quán
-                </Button>
-              </CardFooter>
-            </Card>
+          {RESTAURANTS.map((restaurant, index) => (
+            <RestaurantCard
+              key={restaurant.id}
+              restaurant={restaurant}
+              priority={index === 0}
+            />
           ))}
         </div>
       </section>
