@@ -42,7 +42,7 @@ export function DishCard({ dish, action }: DishCardProps) {
         </CardHeader>
       </div>
 
-      <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t pt-4">
+      <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t [.border-t]:pt-4">
         <span className="text-base font-bold tracking-tight text-primary sm:text-lg">
           {formatVnd(dish.price)}
         </span>
