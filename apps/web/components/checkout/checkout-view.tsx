@@ -34,15 +34,25 @@ export interface CheckoutViewProps {
 }
 
 export function CheckoutView({ initialRestaurantId }: CheckoutViewProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const isHydrated = useHydrated();
-  const initialCheckDone = useRef(false);
-
-  const clearCart = useCartStore((state) => state.clearCart);
-
   const effectiveRestaurantId =
     initialRestaurantId ?? (searchParams.get("restaurantId") || undefined);
+
+  // Query-string navigation reuses this page. Give each Restaurant its own
+  // form, confirmation, and redirect state.
+  return (
+    <CheckoutSession
+      key={effectiveRestaurantId ?? ""}
+      restaurantId={effectiveRestaurantId}
+    />
+  );
+}
+
+function CheckoutSession({ restaurantId: effectiveRestaurantId }: { restaurantId?: string }) {
+  const router = useRouter();
+  const isHydrated = useHydrated();
+  const redirectStarted = useRef(false);
+  const clearCart = useCartStore((state) => state.clearCart);
 
   const restaurant = effectiveRestaurantId
     ? getRestaurantById(effectiveRestaurantId)
@@ -73,13 +83,10 @@ export function CheckoutView({ initialRestaurantId }: CheckoutViewProps) {
     };
   }, []);
 
-  // Initial hydrated check: missing, unknown, or empty cart -> redirect to / with toast
-  // Ref guard guarantees this check runs exactly once on initial hydrated load.
-  // When #14 clears the cart on order placement, this guard prevents redirecting away.
+  // Revalidate when the active Cart changes. A successful Order intentionally
+  // clears its Cart, so keep the confirmation visible in that case.
   useEffect(() => {
-    if (!isHydrated) return;
-    if (initialCheckDone.current) return;
-    initialCheckDone.current = true;
+    if (!isHydrated || view !== "form" || redirectStarted.current) return;
 
     const result = validateCheckoutSession(
       effectiveRestaurantId,
@@ -87,10 +94,11 @@ export function CheckoutView({ initialRestaurantId }: CheckoutViewProps) {
     );
 
     if (!result.valid) {
+      redirectStarted.current = true;
       toast.error(result.message);
       router.replace("/");
     }
-  }, [isHydrated, effectiveRestaurantId, router]);
+  }, [isHydrated, effectiveRestaurantId, cartLines, view, router]);
 
   // Named onSubmit handler for order submission:
   // Submits to POST /api/orders MSW endpoint, shows spinner during submission (isSubmitting),

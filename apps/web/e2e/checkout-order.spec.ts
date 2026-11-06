@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { getDishesByRestaurant, RESTAURANTS } from "../lib/mock-data";
 import { ORDER_CODE_PATTERN } from "../mocks/order-code";
-import type { CartLine } from "../lib/types";
+import type { CartLine, Dish } from "../lib/types";
 
 const [firstRestaurant, secondRestaurant] = RESTAURANTS;
 const firstDishes = getDishesByRestaurant(firstRestaurant!.id);
@@ -10,6 +10,16 @@ const secondDishes = getDishesByRestaurant(secondRestaurant!.id);
 const dish1 = firstDishes[0]!;
 const dish2 = firstDishes[1]!;
 const otherDish = secondDishes[0]!;
+
+function cartLine(dish: Dish): CartLine {
+  return {
+    dishId: dish.id,
+    name: dish.name,
+    price: dish.price,
+    imageUrl: dish.imageUrl,
+    quantity: 1,
+  };
+}
 
 async function gotoHydrated(page: Page, path: string) {
   await page.goto(path);
@@ -56,6 +66,64 @@ async function seedCart(page: Page, carts: Record<string, CartLine[]>) {
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => window.localStorage.clear());
+});
+
+test.describe("Checkout session transitions", () => {
+  for (const action of ["remove", "decrease"] as const) {
+    test(`redirects Home when ${action} empties the active Cart`, async ({ page }) => {
+      await seedCart(page, {
+        [firstRestaurant!.id]: [cartLine(dish1)],
+        [secondRestaurant!.id]: [cartLine(otherDish)],
+      });
+      await gotoHydrated(page, `/checkout?restaurantId=${firstRestaurant!.id}`);
+      await expect(page.getByTestId("checkout-form")).toBeVisible();
+
+      await openDrawer(page);
+      await page.getByTestId(`cart-${action}-${dish1.id}`).click();
+      await page.keyboard.press("Escape");
+
+      await expect(page).toHaveURL("/");
+      await expect(page.getByText("Giỏ hàng của bạn đang trống")).toBeVisible();
+      await expect(page.getByTestId("checkout-loading-skeleton")).toHaveCount(0);
+      const carts = await page.evaluate(() =>
+        JSON.parse(localStorage.getItem("fd-carts-v1")!).state.carts,
+      );
+      expect(carts).toEqual({ [secondRestaurant!.id]: [cartLine(otherDish)] });
+    });
+  }
+
+  test("starts a new checkout when selecting another Restaurant after confirmation", async ({ page }) => {
+    await seedCart(page, {
+      [firstRestaurant!.id]: [cartLine(dish1)],
+      [secondRestaurant!.id]: [cartLine(otherDish)],
+    });
+    await gotoHydrated(page, `/checkout?restaurantId=${firstRestaurant!.id}`);
+    await page.locator("#fullName").fill("Nguyễn Văn An");
+    await page.locator("#phone").fill("0901234567");
+    await page.locator("#address").fill("123 Đường Lê Lợi, Quận 1");
+    await page.getByTestId("checkout-submit-button").click();
+    await expect(page.getByTestId("order-confirmation")).toBeVisible();
+    await expect(page.getByTestId("order-confirmation")).toContainText(firstRestaurant!.name);
+
+    await openDrawer(page);
+    await page.getByTestId(`cart-checkout-link-${secondRestaurant!.id}`).click();
+
+    await expect(page).toHaveURL(`/checkout?restaurantId=${secondRestaurant!.id}`);
+    await expect(page.getByTestId("checkout-form")).toBeVisible();
+    await expect(page.getByTestId("order-confirmation")).toHaveCount(0);
+    await expect(page.getByTestId("checkout-restaurant-name")).toContainText(secondRestaurant!.name);
+    await expect(page.getByTestId(`checkout-line-${otherDish.id}`)).toBeVisible();
+
+    await page.locator("#fullName").fill("Trần Thị Bình");
+    await page.locator("#phone").fill("0987654321");
+    await page.locator("#address").fill("456 Đường Lê Lợi, Quận 1");
+    await page.getByTestId("checkout-submit-button").click();
+    await expect(page.getByTestId("order-confirmation")).toBeVisible();
+    await expect(page.getByTestId("order-confirmation")).toContainText(secondRestaurant!.name);
+    await expect(page.getByTestId("order-code")).toHaveText(ORDER_CODE_PATTERN);
+    await openDrawer(page);
+    await expect(page.getByTestId("cart-empty-state")).toBeVisible();
+  });
 });
 
 test.describe("Đặt hàng, xác nhận đơn hàng và xóa giỏ hàng (Issue #14)", () => {
